@@ -41,11 +41,12 @@ public class GoodServiceImpl implements GoodService {
     @Autowired
     GoodInfoRepository goodInfoRepository;
 
+    QGoodInfoBean goodInfoBean = QGoodInfoBean.goodInfoBean;
+
+    QGoodTypeBean goodTypeBean = QGoodTypeBean.goodTypeBean;
+
     @Override
     public List<GoodDTO> selectWithQueryDSL() {
-
-        QGoodInfoBean goodInfoBean = QGoodInfoBean.goodInfoBean;
-        QGoodTypeBean goodTypeBean = QGoodTypeBean.goodTypeBean;
 
         // 查询字段-select()
         List<String> titleList = jpaQueryFactory.select(goodInfoBean.title).from(goodInfoBean).fetch();
@@ -97,36 +98,27 @@ public class GoodServiceImpl implements GoodService {
 
     @Override
     public List<GoodInfoBean> list() {
-        QGoodInfoBean goodInfoBean = QGoodInfoBean.goodInfoBean;
         return  jpaQueryFactory.selectFrom(goodInfoBean).fetch();
     }
 
     @Override
     public QueryResults<GoodInfoBean> page() {
-        QGoodInfoBean goodInfoBean = QGoodInfoBean.goodInfoBean;
         return  jpaQueryFactory.selectFrom(goodInfoBean).orderBy(goodInfoBean.order.asc()).offset(0).limit(5).fetchResults();
     }
 
     @Override
     public List<GoodInfoBean> leftJoin() {
-
-        QGoodInfoBean goodInfoBean = QGoodInfoBean.goodInfoBean;
-        QGoodTypeBean goodTypeBean = QGoodTypeBean.goodTypeBean;
-
         //以左关联为例-left join
-        return jpaQueryFactory.selectFrom(goodInfoBean).leftJoin(goodTypeBean).on(goodInfoBean.typeId.eq(goodTypeBean.id)).fetch();
+        return jpaQueryFactory.selectFrom(goodInfoBean).leftJoin(goodTypeBean).on(goodInfoBean.typeId.eq(goodTypeBean.id)).where(goodInfoBean.price.between(1,10)).fetch();
     }
 
     @Override
     public double avg() {
-        QGoodInfoBean goodInfoBean = QGoodInfoBean.goodInfoBean;
-        QGoodTypeBean goodTypeBean = QGoodTypeBean.goodTypeBean;
         return jpaQueryFactory.select(goodInfoBean.price.avg()).from(goodInfoBean).fetchOne();
     }
 
     @Override
     public List<GoodInfoBean> query() {
-        QGoodInfoBean goodInfoBean = QGoodInfoBean.goodInfoBean;
         OrderSpecifier<Integer> order = new OrderSpecifier<>(Order.ASC, goodInfoBean.order);
         return Lists.newArrayList(goodInfoRepository.findAll(goodInfoBean.title.ne("菜花"),order));
     }
@@ -136,10 +128,6 @@ public class GoodServiceImpl implements GoodService {
      * @return
      */
     private BooleanBuilder getPredicate(){
-
-        QGoodInfoBean goodInfoBean = QGoodInfoBean.goodInfoBean;
-        QGoodTypeBean goodTypeBean = QGoodTypeBean.goodTypeBean;
-
         BooleanBuilder builder1 = new BooleanBuilder();
         BooleanBuilder builder2 = new BooleanBuilder();
 
