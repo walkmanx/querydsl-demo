@@ -11,9 +11,13 @@ import com.google.common.collect.Lists;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.NonUniqueResultException;
 import com.querydsl.core.QueryResults;
+import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.SimpleTemplate;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -121,6 +125,21 @@ public class GoodServiceImpl implements GoodService {
     public List<GoodInfoBean> query() {
         OrderSpecifier<Integer> order = new OrderSpecifier<>(Order.ASC, goodInfoBean.order);
         return Lists.newArrayList(goodInfoRepository.findAll(goodInfoBean.title.ne("菜花"),order));
+    }
+
+    @Override
+    public List<GoodInfoBean> subselect() {
+        return jpaQueryFactory.selectFrom(goodInfoBean).where(goodInfoBean.typeId.in(JPAExpressions.select(goodTypeBean.id).from(goodTypeBean))).fetch();
+    }
+
+    @Override
+    public List<GoodInfoBean> convertList() {
+
+        SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", goodInfoBean.title);
+
+        log.info(JSON.toJSONString(simpleTemplate));
+
+        return jpaQueryFactory.selectFrom(goodInfoBean).orderBy(new OrderSpecifier(Order.ASC,simpleTemplate)).fetch();
     }
 
     /**

@@ -56,4 +56,14 @@ public class GoodController {
         return goodService.query();
     }
 
+    @GetMapping(value = "/subselect")
+    public List<GoodInfoBean> subselect(){
+        return goodService.subselect();
+    }
+
+    @GetMapping(value = "/convertList")
+    public List<GoodInfoBean> convertList(){
+        return goodService.convertList();
+    }
+
 }

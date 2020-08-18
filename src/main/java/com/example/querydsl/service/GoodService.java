@@ -54,6 +54,13 @@ public interface GoodService {
      */
     List<GoodInfoBean> query();
 
+    /**
+     * 子查询
+     *
+     * @return
+     */
+    List<GoodInfoBean> subselect();
 
+    List<GoodInfoBean> convertList();
 
 }
