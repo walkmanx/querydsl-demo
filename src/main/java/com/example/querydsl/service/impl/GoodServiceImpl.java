@@ -102,6 +102,7 @@ public class GoodServiceImpl implements GoodService {
                 )
         )
                 .from(goodInfoBean,goodTypeBean)
+                .where(goodInfoBean.typeId.eq(goodTypeBean.id))
                 .orderBy(goodInfoBean.title.asc())
                 .fetch();
     }
