@@ -1,29 +1,36 @@
 package com.example.querydsl.service.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.example.querydsl.common.model.PageBean;
 import com.example.querydsl.domain.GoodInfoBean;
 import com.example.querydsl.domain.QGoodInfoBean;
 import com.example.querydsl.domain.QGoodTypeBean;
 import com.example.querydsl.model.GoodDTO;
+import com.example.querydsl.model.GoodDtoPage;
 import com.example.querydsl.repository.GoodInfoRepository;
 import com.example.querydsl.service.GoodService;
 import com.google.common.collect.Lists;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.NonUniqueResultException;
 import com.querydsl.core.QueryResults;
-import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.core.types.dsl.SimpleTemplate;
 import com.querydsl.jpa.JPAExpressions;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import com.example.querydsl.repository.GoodInfoRepository;
+import org.springframework.util.StringUtils;
 
+import javax.persistence.Entity;
 import java.util.List;
 
 /**
@@ -95,7 +102,6 @@ public class GoodServiceImpl implements GoodService {
                 )
         )
                 .from(goodInfoBean,goodTypeBean)
-                .where(this.getPredicate())
                 .orderBy(goodInfoBean.title.asc())
                 .fetch();
     }
@@ -106,8 +112,26 @@ public class GoodServiceImpl implements GoodService {
     }
 
     @Override
-    public QueryResults<GoodInfoBean> page() {
-        return  jpaQueryFactory.selectFrom(goodInfoBean).orderBy(goodInfoBean.order.asc()).offset(0).limit(5).fetchResults();
+    public PageBean<GoodInfoBean> page(GoodDtoPage goodDtoPage) {
+        PageBean<GoodInfoBean> pageBean = new PageBean<GoodInfoBean>();
+
+
+        int offset = goodDtoPage.getPage() * goodDtoPage.getSize();
+
+        JPAQuery<GoodInfoBean> query = jpaQueryFactory.selectFrom(goodInfoBean).where(this.getPredicate(goodDtoPage)).offset(offset).limit(goodDtoPage.getSize());
+
+        SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", goodInfoBean.title);
+
+        query.orderBy(new OrderSpecifier(Order.ASC,simpleTemplate));
+
+        QueryResults<GoodInfoBean> results = query.fetchResults();
+
+        pageBean.setContent(results.getResults());
+        pageBean.setTotal(results.getTotal());
+        pageBean.setPage(goodDtoPage.getPage());
+        pageBean.setSize(new Long(results.getLimit()).intValue());
+
+        return  pageBean;
     }
 
     @Override
@@ -123,8 +147,11 @@ public class GoodServiceImpl implements GoodService {
 
     @Override
     public List<GoodInfoBean> query() {
-        OrderSpecifier<Integer> order = new OrderSpecifier<>(Order.ASC, goodInfoBean.order);
-        return Lists.newArrayList(goodInfoRepository.findAll(goodInfoBean.title.ne("菜花"),order));
+        SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", goodInfoBean.title);
+        OrderSpecifier<String> order = new OrderSpecifier<String>(Order.ASC, simpleTemplate);
+        BooleanBuilder builder1 = new BooleanBuilder();
+        builder1.and(goodInfoBean.title.ne(""));
+        return Lists.newArrayList(goodInfoRepository.findAll(builder1,order));
     }
 
     @Override
@@ -142,21 +169,32 @@ public class GoodServiceImpl implements GoodService {
         return jpaQueryFactory.selectFrom(goodInfoBean).orderBy(new OrderSpecifier(Order.ASC,simpleTemplate)).fetch();
     }
 
+    @Override
+    public QueryResults<GoodInfoBean> findByPage(Predicate predicate, Pageable pageable) {
+        JPAQuery<GoodInfoBean> query = jpaQueryFactory.selectFrom(goodInfoBean).where(predicate).offset(pageable.getOffset()).limit(new Long(pageable.getPageSize()));
+        PathBuilder<Entity> entityPath = new PathBuilder<>(Entity.class, "goodInfoBean");
+        for(Sort.Order order : pageable.getSort()){
+            PathBuilder<Object> path = entityPath.get(order.getProperty());
+            SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", path);
+            query.orderBy(new OrderSpecifier(com.querydsl.core.types.Order.valueOf(order.getDirection().name()),simpleTemplate));
+        }
+        return query.fetchResults();
+    }
+
     /**
      * 构建查询条件
      * @return
      */
-    private BooleanBuilder getPredicate(){
+    private BooleanBuilder getPredicate(GoodDtoPage goodDtoPage){
         BooleanBuilder builder1 = new BooleanBuilder();
-        BooleanBuilder builder2 = new BooleanBuilder();
 
-        if(goodInfoBean != null){
-            builder1.and(goodInfoBean.typeId.eq(goodTypeBean.id));
-
-            builder2.or(goodInfoBean.title.eq("油菜"));
-            builder2.or(goodInfoBean.title.eq("菜花"));
-
-            builder1.and(builder2);
+        if(goodInfoBean != null && goodDtoPage != null){
+            if(!StringUtils.isEmpty(goodDtoPage.getTitle())){
+                builder1.and(goodInfoBean.title.like("%"+goodDtoPage.getTitle()+"%"));
+            }
+            if(goodDtoPage.getPrice() != null){
+                builder1.and(goodInfoBean.price.eq(goodDtoPage.getPrice()));
+            }
         }
         return builder1;
     }

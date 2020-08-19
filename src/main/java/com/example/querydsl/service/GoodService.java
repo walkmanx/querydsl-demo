@@ -1,8 +1,12 @@
 package com.example.querydsl.service;
 
+import com.example.querydsl.common.model.PageBean;
 import com.example.querydsl.domain.GoodInfoBean;
 import com.example.querydsl.model.GoodDTO;
+import com.example.querydsl.model.GoodDtoPage;
 import com.querydsl.core.QueryResults;
+import com.querydsl.core.types.Predicate;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -33,7 +37,7 @@ public interface GoodService {
      * 查询分页数据
      * @return
      */
-    QueryResults<GoodInfoBean> page();
+    PageBean<GoodInfoBean> page(GoodDtoPage doodDtoPage);
 
     /**
      * 左连接查询
@@ -62,5 +66,15 @@ public interface GoodService {
     List<GoodInfoBean> subselect();
 
     List<GoodInfoBean> convertList();
+
+    /**
+     * 分页查询
+     * @param predicate
+     * @param pageable
+     * @return
+     */
+    QueryResults<GoodInfoBean> findByPage(Predicate predicate, Pageable pageable);
+
+
 
 }
