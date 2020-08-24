@@ -13,13 +13,11 @@ import com.google.common.collect.Lists;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.NonUniqueResultException;
 import com.querydsl.core.QueryResults;
-import com.querydsl.core.types.Order;
-import com.querydsl.core.types.OrderSpecifier;
-import com.querydsl.core.types.Predicate;
-import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.*;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.core.types.dsl.SimpleTemplate;
+import com.querydsl.core.types.dsl.StringPath;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -60,29 +58,29 @@ public class GoodServiceImpl implements GoodService {
     public List<GoodDTO> selectWithQueryDSL() {
 
         // 查询字段-select()
-        List<String> titleList = jpaQueryFactory.select(goodInfoBean.title).from(goodInfoBean).fetch();
+        List<String> titleList = jpaQueryFactory.select(goodInfoBean.title).from(goodInfoBean).orderBy(getOrder(Order.ASC,goodInfoBean.title)).fetch();
 
         log.info("查询字段-select() : " + JSON.toJSONString(titleList));
 
         //查询实体-selectFrom()
-        List<GoodInfoBean> goodInfoBeanList = jpaQueryFactory.selectFrom(goodInfoBean).fetch();
+        List<GoodInfoBean> goodInfoBeanList = jpaQueryFactory.selectFrom(goodInfoBean).orderBy(getOrder("asc","title")).fetch();
 
         log.info("查询实体-selectFrom() : " + JSON.toJSONString(goodInfoBeanList));
 
         //去重查询-selectDistinct()
-        List<String> distinctTitleList = jpaQueryFactory.selectDistinct(goodInfoBean.title).from(goodInfoBean).fetch();
+        List<String> distinctTitleList = jpaQueryFactory.selectDistinct(goodInfoBean.title).from(goodInfoBean).orderBy(getDefaultOrder()).fetch();
 
         log.info("去重查询-selectDistinct() : " + JSON.toJSONString(distinctTitleList));
 
         //获取首个查询结果-fetchFirst()
-        GoodInfoBean firstMember = jpaQueryFactory.selectFrom(goodInfoBean).fetchFirst();
+        GoodInfoBean firstMember = jpaQueryFactory.selectFrom(goodInfoBean).orderBy(getDefaultOrder()).fetchFirst();
 
         log.info("获取首个查询结果-fetchFirst() : " + JSON.toJSONString(firstMember));
 
         //获取唯一查询结果-fetchOne()
         //当fetchOne()根据查询条件从数据库中查询到多条匹配数据时，会抛`NonUniqueResultException`。
         try {
-            GoodInfoBean anotherFirstMember = jpaQueryFactory.selectFrom(goodInfoBean).fetchOne();
+            GoodInfoBean anotherFirstMember = jpaQueryFactory.selectFrom(goodInfoBean).orderBy(getDefaultOrder()).fetchOne();
             log.info("获取唯一查询结果-fetchOne() : " + JSON.toJSONString(anotherFirstMember));
 
         }catch (NonUniqueResultException e){
@@ -103,27 +101,22 @@ public class GoodServiceImpl implements GoodService {
         )
                 .from(goodInfoBean,goodTypeBean)
                 .where(goodInfoBean.typeId.eq(goodTypeBean.id))
-                .orderBy(goodInfoBean.title.asc())
+                .orderBy(getDefaultOrder())
                 .fetch();
     }
 
     @Override
     public List<GoodInfoBean> list() {
-        return  jpaQueryFactory.selectFrom(goodInfoBean).fetch();
+        return  jpaQueryFactory.selectFrom(goodInfoBean).orderBy(getDefaultOrder()).fetch();
     }
 
     @Override
     public PageBean<GoodInfoBean> page(GoodDtoPage goodDtoPage) {
         PageBean<GoodInfoBean> pageBean = new PageBean<GoodInfoBean>();
 
-
         int offset = goodDtoPage.getPage() * goodDtoPage.getSize();
 
-        JPAQuery<GoodInfoBean> query = jpaQueryFactory.selectFrom(goodInfoBean).where(this.getPredicate(goodDtoPage)).offset(offset).limit(goodDtoPage.getSize());
-
-        SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", goodInfoBean.title);
-
-        query.orderBy(new OrderSpecifier(Order.ASC,simpleTemplate));
+        JPAQuery<GoodInfoBean> query = jpaQueryFactory.selectFrom(goodInfoBean).where(this.getPredicate(goodDtoPage)).offset(offset).limit(goodDtoPage.getSize()).orderBy(getDefaultOrder());
 
         QueryResults<GoodInfoBean> results = query.fetchResults();
 
@@ -148,11 +141,9 @@ public class GoodServiceImpl implements GoodService {
 
     @Override
     public List<GoodInfoBean> query() {
-        SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", goodInfoBean.title);
-        OrderSpecifier<String> order = new OrderSpecifier<String>(Order.ASC, simpleTemplate);
         BooleanBuilder builder1 = new BooleanBuilder();
         builder1.and(goodInfoBean.title.ne(""));
-        return Lists.newArrayList(goodInfoRepository.findAll(builder1,order));
+        return Lists.newArrayList(goodInfoRepository.findAll(builder1,getDefaultOrder()));
     }
 
     @Override
@@ -162,22 +153,14 @@ public class GoodServiceImpl implements GoodService {
 
     @Override
     public List<GoodInfoBean> convertList() {
-
-        SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", goodInfoBean.title);
-
-        log.info(JSON.toJSONString(simpleTemplate));
-
-        return jpaQueryFactory.selectFrom(goodInfoBean).orderBy(new OrderSpecifier(Order.ASC,simpleTemplate)).fetch();
+        return jpaQueryFactory.selectFrom(goodInfoBean).orderBy(getDefaultOrder()).fetch();
     }
 
     @Override
     public QueryResults<GoodInfoBean> findByPage(Predicate predicate, Pageable pageable) {
         JPAQuery<GoodInfoBean> query = jpaQueryFactory.selectFrom(goodInfoBean).where(predicate).offset(pageable.getOffset()).limit(new Long(pageable.getPageSize()));
-        PathBuilder<Entity> entityPath = new PathBuilder<>(Entity.class, "goodInfoBean");
         for(Sort.Order order : pageable.getSort()){
-            PathBuilder<Object> path = entityPath.get(order.getProperty());
-            SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", path);
-            query.orderBy(new OrderSpecifier(com.querydsl.core.types.Order.valueOf(order.getDirection().name()),simpleTemplate));
+            query.orderBy(getOrder(order.getDirection().name(),order.getProperty()));
         }
         return query.fetchResults();
     }
@@ -198,5 +181,18 @@ public class GoodServiceImpl implements GoodService {
             }
         }
         return builder1;
+    }
+
+    private OrderSpecifier getDefaultOrder(){
+        return this.getOrder(Order.ASC,goodInfoBean.title);
+    }
+
+    private OrderSpecifier getOrder(String direction,String propertyName){
+        return this.getOrder(Order.valueOf(direction.toUpperCase()),new PathBuilder<>(Entity.class, "goodInfoBean").get(propertyName));
+    }
+
+    private OrderSpecifier getOrder(Order order, Path path){
+        SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", path);
+        return new OrderSpecifier<String>(order, simpleTemplate);
     }
 }
