@@ -17,7 +17,6 @@ import com.querydsl.core.types.*;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.core.types.dsl.SimpleTemplate;
-import com.querydsl.core.types.dsl.StringPath;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -90,13 +89,16 @@ public class GoodServiceImpl implements GoodService {
         // //查询并将结果封装至dto中
         return jpaQueryFactory.select(
                 Projections.bean(
-                        GoodDTO.class,//返回自定义实体的类型
+                        //返回自定义实体的类型
+                        GoodDTO.class,
                         goodInfoBean.id,
                         goodInfoBean.price,
                         goodInfoBean.title,
                         goodInfoBean.unit,
-                        goodTypeBean.name.as("typeName"),//使用别名对应dto内的typeName
-                        goodTypeBean.id.as("typeId")//使用别名对应dto内的typeId
+                        //使用别名对应dto内的typeName
+                        goodTypeBean.name.as("typeName"),
+                        //使用别名对应dto内的typeId
+                        goodTypeBean.id.as("typeId")
                 )
         )
                 .from(goodInfoBean,goodTypeBean)
