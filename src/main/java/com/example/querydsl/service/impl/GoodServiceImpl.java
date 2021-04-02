@@ -1,6 +1,5 @@
 package com.example.querydsl.service.impl;
 
-import com.alibaba.fastjson.JSON;
 import com.example.querydsl.common.model.PageBean;
 import com.example.querydsl.domain.GoodInfoBean;
 import com.example.querydsl.domain.QGoodInfoBean;
@@ -11,13 +10,10 @@ import com.example.querydsl.repository.GoodInfoRepository;
 import com.example.querydsl.service.GoodService;
 import com.google.common.collect.Lists;
 import com.querydsl.core.BooleanBuilder;
-import com.querydsl.core.NonUniqueResultException;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.types.*;
-import com.querydsl.core.types.dsl.EntityPathBase;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.PathBuilder;
-import com.querydsl.core.types.dsl.SimpleTemplate;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -30,8 +26,6 @@ import org.springframework.util.StringUtils;
 
 import javax.persistence.Entity;
 import java.util.List;
-
-import static com.querydsl.core.types.PathMetadataFactory.forVariable;
 
 /**
  * <p>Title: </p>
