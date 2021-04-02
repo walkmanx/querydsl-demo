@@ -14,6 +14,7 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.NonUniqueResultException;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.types.*;
+import com.querydsl.core.types.dsl.EntityPathBase;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.PathBuilder;
 import com.querydsl.core.types.dsl.SimpleTemplate;
@@ -29,6 +30,8 @@ import org.springframework.util.StringUtils;
 
 import javax.persistence.Entity;
 import java.util.List;
+
+import static com.querydsl.core.types.PathMetadataFactory.forVariable;
 
 /**
  * <p>Title: </p>
@@ -55,7 +58,7 @@ public class GoodServiceImpl implements GoodService {
 
     @Override
     public List<GoodDTO> selectWithQueryDSL() {
-
+        /**
         // 查询字段-select()
         List<String> titleList = jpaQueryFactory.select(goodInfoBean.title).from(goodInfoBean).orderBy(getOrder(Order.ASC,goodInfoBean.title)).fetch();
 
@@ -85,11 +88,13 @@ public class GoodServiceImpl implements GoodService {
         }catch (NonUniqueResultException e){
             log.info("获取唯一查询结果-fetchOne() : " + e.getMessage());
         }
+        **/
+        log.info(goodInfoBean.getRoot().toString());
 
-        // //查询并将结果封装至dto中
+        // 查询并将结果封装至dto中
         return jpaQueryFactory.select(
                 Projections.bean(
-                        //返回自定义实体的类型
+                        // 返回自定义实体的类型
                         GoodDTO.class,
                         goodInfoBean.id,
                         goodInfoBean.price,
@@ -103,7 +108,7 @@ public class GoodServiceImpl implements GoodService {
         )
                 .from(goodInfoBean,goodTypeBean)
                 .where(goodInfoBean.typeId.eq(goodTypeBean.id))
-                .orderBy(getDefaultOrder())
+                .orderBy(getOrder("asc","title"))
                 .fetch();
     }
 
@@ -119,6 +124,8 @@ public class GoodServiceImpl implements GoodService {
         int offset = goodDtoPage.getPage() * goodDtoPage.getSize();
 
         JPAQuery<GoodInfoBean> query = jpaQueryFactory.selectFrom(goodInfoBean).where(this.getPredicate(goodDtoPage)).offset(offset).limit(goodDtoPage.getSize()).orderBy(getDefaultOrder());
+
+        query.orderBy(getOrder("asc",goodDtoPage.getPropertyName()));
 
         QueryResults<GoodInfoBean> results = query.fetchResults();
 
@@ -143,9 +150,9 @@ public class GoodServiceImpl implements GoodService {
 
     @Override
     public List<GoodInfoBean> query() {
-        BooleanBuilder builder1 = new BooleanBuilder();
-        builder1.and(goodInfoBean.title.ne(""));
-        return Lists.newArrayList(goodInfoRepository.findAll(builder1,getDefaultOrder()));
+        BooleanBuilder predicate = new BooleanBuilder();
+        predicate.and(goodInfoBean.title.ne(""));
+        return Lists.newArrayList(goodInfoRepository.findAll(predicate,getDefaultOrder()));
     }
 
     @Override
@@ -172,17 +179,16 @@ public class GoodServiceImpl implements GoodService {
      * @return
      */
     private BooleanBuilder getPredicate(GoodDtoPage goodDtoPage){
-        BooleanBuilder builder1 = new BooleanBuilder();
-
+        BooleanBuilder predicate = new BooleanBuilder();
         if(goodInfoBean != null && goodDtoPage != null){
             if(!StringUtils.isEmpty(goodDtoPage.getTitle())){
-                builder1.and(goodInfoBean.title.like("%"+goodDtoPage.getTitle()+"%"));
+                predicate.and(goodInfoBean.title.like("%" + goodDtoPage.getTitle() + "%"));
             }
             if(goodDtoPage.getPrice() != null){
-                builder1.and(goodInfoBean.price.eq(goodDtoPage.getPrice()));
+                predicate.and(goodInfoBean.price.eq(goodDtoPage.getPrice()));
             }
         }
-        return builder1;
+        return predicate;
     }
 
     private OrderSpecifier getDefaultOrder(){
@@ -190,11 +196,16 @@ public class GoodServiceImpl implements GoodService {
     }
 
     private OrderSpecifier getOrder(String direction,String propertyName){
-        return this.getOrder(Order.valueOf(direction.toUpperCase()),new PathBuilder<>(Entity.class, "goodInfoBean").get(propertyName));
+        return this.getOrder(Order.valueOf(direction.toUpperCase()),new PathBuilder<>(Entity.class, "goodInfoBean").get(propertyName,String.class));
     }
 
     private OrderSpecifier getOrder(Order order, Path path){
-        SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", path);
-        return new OrderSpecifier<String>(order, simpleTemplate);
+        if(path.getType().equals(String.class)){
+//            SimpleTemplate<String> simpleTemplate = Expressions.simpleTemplate(String.class, "convert_gbk({0})", path);
+            return new OrderSpecifier(order, Expressions.simpleTemplate(String.class, "convert_gbk({0})", path));
+        }else{
+            return new OrderSpecifier(order, path);
+        }
+
     }
 }
